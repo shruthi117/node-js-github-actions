@@ -1,0 +1,39 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install SSH Key
+      env:
+        KEY: ${{ secrets.EC2_KEY }}
+      run: |
+        echo "$KEY" > key.pem
+        chmod 600 key.pem
+
+    - name: Deploy to EC2
+      run: |
+        ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          cd ~/your-app-folder || mkdir ~/your-app-folder && cd ~/your-app-folder
+          pm2 stop all || true
+          rm -rf *
+          exit
+        EOF
+
+        scp -i key.pem -r ./* ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/your-app-folder/
+
+        ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          cd ~/your-app-folder
+          npm install
+          pm2 start index.js --name "node-app"
+          pm2 save
+        EOF
