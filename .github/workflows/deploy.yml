@@ -29,6 +29,7 @@ jobs:
             mkdir -p ~/nodejs-app
             cd ~/nodejs-app
             pm2 stop all || true
+            pm2 delete all || true
             rm -rf *
             exit
           EOF
@@ -40,8 +41,9 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$EC2_HOST << 'EOF'
             cd ~/nodejs-app
             npm install
-            pm2 start index.js --name "nodejs-app"
+            NODE_ENV=production pm2 start app.js --name "nodejs-app" || pm2 restart "nodejs-app"
             pm2 save
+            pm2 list
           EOF
 
       - name: Clean Up
